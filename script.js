@@ -1,7 +1,7 @@
 const audio = new Audio();
 const songs = [
     { 
-        url: 'songs/jabtak.mp3.mp3', // Folder ka naam / file ka naam
+        url: 'jabtak.mp3.mp3', // Folder ka naam / file ka naam
         title: 'Jab Tak', 
         artist: 'Armaan Malik' 
     }
