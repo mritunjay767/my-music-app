@@ -3,46 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>my-music</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Sara Music | Premium Full Stack</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #1db954; --bg: #ffffff; --sidebar: #f5f5f7; --text: #1d1d1f; --glass: rgba(255, 255, 255, 0.8); }
+        [data-theme="dark"] { --bg: #000000; --sidebar: #121212; --text: #ffffff; --glass: rgba(20, 20, 20, 0.8); }
+
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'SF Pro Display', sans-serif; display: flex; height: 100vh; overflow: hidden; transition: 0.3s; }
+
+        /* Sidebar */
+        .sidebar { width: 250px; background: var(--sidebar); padding: 30px 20px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid rgba(0,0,0,0.05); z-index: 10; }
+        .logo { font-weight: 800; font-size: 24px; color: var(--accent); margin-bottom: 25px; }
+        .nav-item { padding: 12px 18px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; transition: 0.2s; }
+        .nav-item:hover, .nav-item.active { background: var(--accent); color: white; }
+        .section-label { margin: 20px 0 10px 18px; font-size: 11px; font-weight: bold; opacity: 0.4; letter-spacing: 1px; }
+
+        /* Main View */
+        .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
+        header { 
+            position: sticky; top: 0; background: var(--glass); backdrop-filter: blur(20px);
+            padding: 15px 40px; display: flex; align-items: center; justify-content: space-between; z-index: 100; border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .search-bar { width: 350px; padding: 10px 20px; border-radius: 10px; border: none; background: #e8e8ed; outline: none; font-size: 14px; }
+
+        /* User Profile Area */
+        .user-area { display: flex; align-items: center; gap: 12px; }
+        .profile-img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--accent); }
+        .login-btn { background: var(--accent); color: white; border: none; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-weight: 600; }
+
+        /* Content Grid */
+        .content { padding: 30px 40px 150px 40px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 25px; }
+        .card { cursor: pointer; transition: 0.3s; position: relative; }
+        .card:hover { transform: translateY(-8px); }
+        .card img { width: 100%; aspect-ratio: 1; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .card h4 { margin: 12px 0 2px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .like-overlay { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; display: none; cursor: pointer; }
+        .card:hover .like-overlay { display: block; }
+
+        /* Fixed Player Bar */
+        .player { 
+            position: fixed; bottom: 0; width: 100%; background: var(--glass); backdrop-filter: blur(25px);
+            padding: 12px 40px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(0,0,0,0.05); box-sizing: border-box; z-index: 1000;
+        }
+        .track-info { display: flex; align-items: center; gap: 15px; width: 300px; }
+        #p-art { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; }
+        .controls { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .p-btns { display: flex; align-items: center; gap: 25px; font-size: 24px; }
+        .play-main { font-size: 35px; color: var(--accent); cursor: pointer; }
+        .seekbar-cont { width: 100%; max-width: 500px; display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: bold; opacity: 0.6; }
+        #seekbar { flex: 1; accent-color: var(--accent); cursor: pointer; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <nav class="sidebar">
-            <div class="brand">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_with_text.svg" alt="Spotify logo">
-                <h2>my-music</h2>
+
+    <div class="sidebar">
+        <div class="logo">Sara Music</div>
+        <div class="nav-item active" onclick="fetchMusic('Latest Bollywood')">Listen Now</div>
+        <div class="nav-item" onclick="fetchMusic('International Hits')">Browse</div>
+        <div class="nav-item" onclick="fetchMusic('Hindi 90s')">Radio</div>
+        
+        <div class="section-label">LIBRARY</div>
+        <div class="nav-item" onclick="showCloudLibrary()">Liked Songs ❤️</div>
+        <div class="nav-item" onclick="fetchMusic('Arijit Singh')">Artists</div>
+        <div class="nav-item" onclick="fetchMusic('Best Albums')">Albums</div>
+    </div>
+
+    <div class="main">
+        <header>
+            <input type="text" id="search-box" class="search-bar" placeholder="Search artists, songs...">
+            <div class="user-area" id="user-area">
+                <button class="login-btn" onclick="googleLogin()">Login with Google</button>
             </div>
+        </header>
 
-            <ul>
-                <li class="active">Home</li>
-                <li>Search</li>
-                <li>Your Library</li>
-                <li>Liked Songs</li>
-            </ul>
-        </nav>
-
-        <main class="main-view">
-            <section class="top-bar">
-                <h1>My Playlist</h1>
-                <p>Chill beats and favorite tracks with a dark Spotify-style layout.</p>
-            </section>
-
-            <div class="song-list" id="songList"></div>
-        </main>
+        <div class="content">
+            <h2 id="view-heading">Listen Now</h2>
+            <div class="grid" id="grid"></div>
+        </div>
     </div>
 
-    <div class="player-bar">
-        <div class="progress-container">
-            <input type="range" id="progressBar" value="0" min="0" max="100">
+    <div class="player">
+        <div class="track-info">
+            <img id="p-art" src="https://via.placeholder.com/50">
+            <div style="overflow:hidden">
+                <div id="p-title" style="font-weight:600; font-size:14px; white-space:nowrap;">No Track</div>
+                <div id="p-artist" style="font-size:12px; opacity:0.5;">Sara AI</div>
+            </div>
         </div>
+
         <div class="controls">
-            <button id="prev">Previous</button>
-            <button id="masterPlay">Play</button>
-            <button id="next">Next</button>
+            <div class="p-btns">
+                <span onclick="skipTime(-10)" style="cursor:pointer">⏪</span>
+                <span class="play-main" id="play-btn" onclick="togglePlay()">▶</span>
+                <span onclick="skipTime(10)" style="cursor:pointer">⏩</span>
+            </div>
+            <div class="seekbar-cont">
+                <span id="cur-t">0:00</span>
+                <input type="range" id="seekbar" value="0" min="0" max="100">
+                <span id="dur-t">0:00</span>
+            </div>
+        </div>
+        <div style="width:300px; text-align:right;">
+            <button onclick="toggleTheme()" style="background:none; border:none; cursor:pointer; font-size:18px;">🌓</button>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <audio id="audio-player"></audio>
+
+    <script>
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- AUTH LOGIC ---
+        function googleLogin() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider);
+        }
+
+        auth.onAuthStateChanged(user => {
+            const userArea = document.getElementById('user-area');
+            if(user) {
+                userArea.innerHTML = `
+                    <span style="font-weight:600; font-size:14px;">${user.displayName}</span>
+                    <img class="profile-img" src="${user.photoURL}" onclick="auth.signOut()" title="Click to Logout">
+                `;
+            } else {
+                userArea.innerHTML = `<button class="login-btn" onclick="googleLogin()">Login with Google</button>`;
+            }
+        });
+
+        // --- MUSIC LOGIC ---
+        const audio = document.getElementById('audio-player');
+        const grid = document.getElementById('grid');
+
+        async function fetchMusic(query) {
+            document.getElementById('view-heading').innerText = "Searching...";
+            const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=24`);
+            const data = await res.json();
+            renderSongs(data.results);
+            document.getElementById('view-heading').innerText = query;
+        }
+
+        function renderSongs(songs) {
+            grid.innerHTML = '';
+            songs.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                let art = s.artworkUrl100.replace('100x100bb', '500x500bb');
+                card.innerHTML = `
+                    <img src="${art}">
+                    <button class="like-overlay" onclick="saveToCloud(event, '${s.trackId}', '${s.trackName}', '${art}', '${s.previewUrl}')">❤️</button>
+                    <h4>${s.trackName}</h4>
+                    <p style="font-size:12px; opacity:0.5;">${s.artistName}</p>
+                `;
+                card.onclick = () => {
+                    audio.src = s.previewUrl;
+                    audio.play();
+                    document.getElementById('p-title').innerText = s.trackName;
+                    document.getElementById('p-artist').innerText = s.artistName;
+                    document.getElementById('p-art').src = art;
+                    document.getElementById('play-btn').innerText = "⏸";
+                };
+                grid.appendChild(card);
+            });
+        }
+
+        // --- CLOUD LIBRARY ---
+        async function saveToCloud(e, id, name, art, url) {
+            e.stopPropagation();
+            if(!auth.currentUser) return alert("Bhai, login kar lo pehle!");
+            await db.collection("users").doc(auth.currentUser.uid).collection("liked").doc(id).set({name, art, url});
+            alert("Saved to Cloud!");
+        }
+
+        async function showCloudLibrary() {
+            if(!auth.currentUser) return alert("Please login to see your library!");
+            document.getElementById('view-heading').innerText = "Your Cloud Library ❤️";
+            const snap = await db.collection("users").doc(auth.currentUser.uid).collection("liked").get();
+            const songs = snap.docs.map(doc => ({
+                trackName: doc.data().name,
+                artworkUrl100: doc.data().art,
+                previewUrl: doc.data().url,
+                artistName: "From Cloud"
+            }));
+            renderSongs(songs);
+        }
+
+        // --- PLAYER CONTROLS ---
+        function togglePlay() {
+            if(audio.paused) { audio.play(); document.getElementById('play-btn').innerText = "⏸"; }
+            else { audio.pause(); document.getElementById('play-btn').innerText = "▶"; }
+        }
+
+        audio.ontimeupdate = () => {
+            if(audio.duration) {
+                const seek = document.getElementById('seekbar');
+                seek.value = (audio.currentTime / audio.duration) * 100;
+                document.getElementById('cur-t').innerText = fmt(audio.currentTime);
+                document.getElementById('dur-t').innerText = fmt(audio.duration);
+            }
+        };
+
+        document.getElementById('seekbar').oninput = (e) => audio.currentTime = (e.target.value / 100) * audio.duration;
+        function skipTime(t) { audio.currentTime += t; }
+        function fmt(s) {
+            let m = Math.floor(s/60);
+            let sec = Math.floor(s%60);
+            return `${m}:${sec < 10 ? '0'+sec : sec}`;
+        }
+
+        function toggleTheme() {
+            const b = document.body;
+            b.getAttribute('data-theme') === 'dark' ? b.setAttribute('data-theme', 'light') : b.setAttribute('data-theme', 'dark');
+        }
+
+        document.getElementById('search-box').onkeypress = (e) => { if(e.key === 'Enter') fetchMusic(e.target.value); };
+        window.onload = () => fetchMusic("Hindi Pop 2026");
+
+    </script>
 </body>
 </html>
